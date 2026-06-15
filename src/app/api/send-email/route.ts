@@ -10,11 +10,11 @@ export async function POST(request: Request) {
     const data = await resend.emails.send({
       from: 'Donor Darah <admin@dondarkci.com>', // Ganti dengan domain terverifikasi di dashboard Resend
       to: [email],
-      subject: 'Konfirmasi Pendaftaran Donor Darah PT KCI',
+      subject: 'Donor Darah PT Kereta Commuter Indonesia',
       html: `
         <p>Halo ${nama},</p>
-        <p>Terimakasih, anda telah terdaftar sebagai peserta Donor Darah PT Kereta Commuter Indonesia di ${lokasi} pada tanggal ${tanggal}. Setetes darah yang anda berikan sangat berarti bagi sesama.</p>
-        <p>Sampai jumpa di lokasi ya Insan KAI Commuter<p>
+        <p>Terimakasih, anda telah terdaftar sebagai peserta Donor Darah PT Kereta Commuter Indonesia di ${lokasi} pada tanggal ${tanggal}. </p>
+        <p>Setetes darah yang anda berikan bukan sekadar cairan tubuh, melainkan harapan baru, senyuman baru, dan kesempatan hidup kedua bagi seseorang yang membutuhkan<p>
 
 
         <p>Salam hangat,<p>
