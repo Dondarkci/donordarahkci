@@ -796,24 +796,43 @@ export default function AdminPage() {
                           <div className="text-[10px] text-[#80766E]">{reg.locationDate}</div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Select 
-                            value={reg.status || "Tidak Hadir"} 
-                            onValueChange={(val) => handleUpdateStatus(reg, val)}
-                          >
-                            <SelectTrigger className={cn(
-                              "h-9 w-[130px] rounded-xl border-none font-bold text-xs mx-auto",
-                              reg.status === "Berhasil" ? "bg-emerald-50 text-emerald-700" :
-                              reg.status === "Tidak Berhasil" ? "bg-red-50 text-red-700" :
-                              "bg-orange-50 text-orange-700"
+                          <div className="flex items-center justify-center gap-2">
+                            <span className={cn(
+                              "px-2 py-1 rounded-full text-[10px] font-bold",
+                              reg.status === "Berhasil" ? "bg-emerald-100 text-emerald-700" :
+                              reg.status === "Tidak Berhasil" ? "bg-red-100 text-red-700" :
+                              "bg-orange-100 text-orange-700"
                             )}>
-                              <SelectValue placeholder="Pilih Status" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-none shadow-xl">
-                              <SelectItem value="Berhasil" className="text-emerald-700 font-bold focus:bg-emerald-50">Berhasil</SelectItem>
-                              <SelectItem value="Tidak Berhasil" className="text-red-700 font-bold focus:bg-red-50">Tidak Berhasil</SelectItem>
-                              <SelectItem value="Tidak Hadir" className="text-orange-700 font-bold focus:bg-orange-50">Tidak Hadir</SelectItem>
-                            </SelectContent>
-                          </Select>
+                              {reg.status || "Tidak Hadir"}
+                            </span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-muted">
+                                  <Pencil className="h-3.5 w-3.5 text-[#80766E]" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl border-none shadow-xl bg-white p-2">
+                                <DropdownMenuItem 
+                                  onClick={() => handleUpdateStatus(reg, "Berhasil")}
+                                  className="text-emerald-700 font-bold focus:bg-emerald-50 cursor-pointer"
+                                >
+                                  Berhasil
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleUpdateStatus(reg, "Tidak Berhasil")}
+                                  className="text-red-700 font-bold focus:bg-red-50 cursor-pointer"
+                                >
+                                  Tidak Berhasil
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleUpdateStatus(reg, "Tidak Hadir")}
+                                  className="text-orange-700 font-bold focus:bg-orange-50 cursor-pointer"
+                                >
+                                  Tidak Hadir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                         <TableCell className="text-[#A09891] text-sm text-center">
                           {reg.registrationDate ? new Date(reg.registrationDate.seconds * 1000).toLocaleString('id-ID') : "-"}
@@ -845,7 +864,7 @@ export default function AdminPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle className="text-2xl font-headline font-bold text-[#2D241E] flex items-center gap-2">
                                     <AlertTriangle className="h-6 w-6 text-red-500" /> Hapus Pendaftar?
-                                  </AlertDialogTitle>
+                                  </AlertTriangle>
                                   <AlertDialogDescription className="text-[#80766E] text-base">
                                     Apakah Anda yakin ingin menghapus data <strong>{reg.fullName}</strong>? 
                                     Tindakan ini akan mengembalikan 1 slot kuota untuk lokasi <strong>{reg.locationName}</strong> jika pendaftaran dilakukan setelah proses seed terakhir.
