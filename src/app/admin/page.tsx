@@ -36,6 +36,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   
   const [loginEmail, setLoginEmail] = useState("");
@@ -493,7 +494,12 @@ export default function AdminPage() {
         }
       }
 
-      return matchesSearch && matchesDate;
+      let matchesLocation = true;
+      if (selectedLocation !== "all") {
+        matchesLocation = r.eventSlotId === selectedLocation;
+      }
+
+      return matchesSearch && matchesDate && matchesLocation;
     })
     .sort((a, b) => {
       const timeA = a.registrationDate?.seconds || 0;
@@ -512,7 +518,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, startDate, endDate]);
+  }, [searchQuery, startDate, endDate, selectedLocation]);
 
   if (isUserLoading || (user && isAdminCheckLoading)) {
     return (
@@ -714,12 +720,28 @@ export default function AdminPage() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("h-14 px-5 rounded-2xl border-none bg-[#F8F7F4] text-[#80766E] font-bold gap-2", (startDate || endDate) && "text-primary bg-primary/5")}>
-                    <CalendarIcon className="h-5 w-5" />
-                    {startDate && endDate ? `${format(parseISO(startDate), 'dd/MM')} - ${format(parseISO(endDate), 'dd/MM')}` : "Filter Tanggal"}
+                  <Button variant="outline" className={cn("h-14 px-5 rounded-2xl border-none bg-[#F8F7F4] text-[#80766E] font-bold gap-2", (startDate || endDate || selectedLocation !== "all") && "text-primary bg-primary/5")}>
+                    <SlidersHorizontal className="h-5 w-5" />
+                    Filter
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-6 rounded-3xl border-none shadow-2xl space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-[#80766E]">Filter Lokasi</Label>
+                    <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                      <SelectTrigger className="bg-[#F8F7F4] border-none rounded-xl h-11">
+                        <SelectValue placeholder="Semua Lokasi" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-none shadow-xl">
+                        <SelectItem value="all">Semua Lokasi</SelectItem>
+                        {locations?.filter(l => l.locationName).map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>
+                            {loc.locationName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-[#80766E]">Dari Tanggal</Label>
                     <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-[#F8F7F4] border-none rounded-xl h-11" />
@@ -728,8 +750,8 @@ export default function AdminPage() {
                     <Label className="text-xs font-bold text-[#80766E]">Sampai Tanggal</Label>
                     <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-[#F8F7F4] border-none rounded-xl h-11" />
                   </div>
-                  {(startDate || endDate) && (
-                    <Button variant="ghost" onClick={() => { setStartDate(""); setEndDate(""); }} className="w-full text-red-500 hover:text-red-700 hover:bg-red-50 font-bold h-11 gap-2 rounded-xl">
+                  {(startDate || endDate || selectedLocation !== "all") && (
+                    <Button variant="ghost" onClick={() => { setStartDate(""); setEndDate(""); setSelectedLocation("all"); }} className="w-full text-red-500 hover:text-red-700 hover:bg-red-50 font-bold h-11 gap-2 rounded-xl">
                       <FilterX className="h-4 w-4" /> Reset Filter
                     </Button>
                   )}
