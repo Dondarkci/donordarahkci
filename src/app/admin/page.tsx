@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -44,7 +43,6 @@ export default function AdminPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const [editingLoc, setEditingLoc] = useState<LocationOption | null>(null);
   const [newName, setNewName] = useState("");
@@ -140,54 +138,6 @@ export default function AdminPage() {
     } catch (e) {
       console.error(e);
       toast({ title: "Gagal Menambah Data", variant: "destructive" });
-    }
-  };
-
-  const handleGenerateSamples = async () => {
-    if (!user || !locations || locations.length === 0) {
-      toast({ title: "Gagal", description: "Pastikan lokasi (seed) sudah ada.", variant: "destructive" });
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const samples = [
-        { fullName: "Budi Santoso", email: "budi@email.com", category: "Pegawai KCI", nipp: "12345", unitKerja: "Operasi", bloodType: "A" },
-        { fullName: "Siti Aminah", email: "siti@email.com", category: "Umum", nik: "", bloodType: "B" },
-        { fullName: "Agus Wijaya", email: "agus@email.com", category: "Pegawai KCI", nipp: "67890", unitKerja: "Sarana", bloodType: "O" },
-        { fullName: "Dewi Lestari", email: "dewi@email.com", category: "Umum", nik: "", bloodType: "AB" },
-        { fullName: "Rudi Hermawan", email: "rudi@email.com", category: "Pegawai KCI", nipp: "11223", unitKerja: "IT", bloodType: "A" }
-      ];
-
-      for (const sample of samples) {
-        const randomLoc = locations[Math.floor(Math.random() * locations.length)];
-        const registrationId = doc(collection(db, "temp")).id;
-        const regRef = doc(db, "users", user.uid, "registrations", registrationId);
-        
-        const regData = {
-          ...sample,
-          id: registrationId,
-          eventSlotId: randomLoc.id,
-          locationName: randomLoc.locationName,
-          locationDate: randomLoc.eventDate,
-          registrationDate: serverTimestamp(),
-          githubUserId: user.uid,
-          status: "Tidak Hadir"
-        };
-
-        await updateDoc(doc(db, "eventSlots", randomLoc.id), { 
-          currentRegistrations: increment(1),
-          updatedAt: serverTimestamp()
-        });
-        
-        const batch = writeBatch(db);
-        batch.set(regRef, regData);
-        await batch.commit();
-      }
-      toast({ title: "Berhasil", description: "5 Pendaftar contoh telah dibuat." });
-    } catch (error: any) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -646,14 +596,6 @@ export default function AdminPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={handleSeedData} className="bg-blue-600 hover:bg-blue-700 text-white gap-2 h-12 rounded-xl px-5 font-bold shadow-sm">
             <PlusCircle className="h-4 w-4" /> Seed Lokasi
-          </Button>
-
-          <Button 
-            onClick={handleGenerateSamples} 
-            disabled={isGenerating}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-12 rounded-xl px-5 font-bold shadow-sm"
-          >
-            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Sample Pendaftar
           </Button>
 
           <AlertDialog>
