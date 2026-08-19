@@ -152,9 +152,9 @@ export default function AdminPage() {
     try {
       const samples = [
         { fullName: "Budi Santoso", email: "budi@email.com", category: "Pegawai KCI", nipp: "12345", unitKerja: "Operasi", bloodType: "A" },
-        { fullName: "Siti Aminah", email: "siti@email.com", category: "Umum", nik: "320123456789", bloodType: "B" },
+        { fullName: "Siti Aminah", email: "siti@email.com", category: "Umum", nik: "", bloodType: "B" },
         { fullName: "Agus Wijaya", email: "agus@email.com", category: "Pegawai KCI", nipp: "67890", unitKerja: "Sarana", bloodType: "O" },
-        { fullName: "Dewi Lestari", email: "dewi@email.com", category: "Umum", nik: "320987654321", bloodType: "AB" },
+        { fullName: "Dewi Lestari", email: "dewi@email.com", category: "Umum", nik: "", bloodType: "AB" },
         { fullName: "Rudi Hermawan", email: "rudi@email.com", category: "Pegawai KCI", nipp: "11223", unitKerja: "IT", bloodType: "A" }
       ];
 
@@ -395,7 +395,7 @@ export default function AdminPage() {
         updateData.unitKerja = editRegUnit;
         updateData.nik = "";
       } else {
-        updateData.nik = editRegIdNumber;
+        updateData.nik = ""; // NIK removed for Umum
         updateData.nipp = "";
         updateData.unitKerja = "";
       }
@@ -1125,13 +1125,6 @@ export default function AdminPage() {
                   <Input value={editRegUnit} onChange={(e) => setEditRegUnit(e.target.value)} className="h-12 bg-[#F8F7F4] border-none rounded-2xl" />
                 </div>
               </>
-            )}
-
-            {editRegCategory === "Umum" && (
-              <div className="space-y-2">
-                <Label className="text-sm font-bold">NIK</Label>
-                <Input value={editRegIdNumber} onChange={(e) => setEditRegIdNumber(e.target.value)} className="h-12 bg-[#F8F7F4] border-none rounded-2xl" />
-              </div>
             )}
 
             <div className="space-y-2">
