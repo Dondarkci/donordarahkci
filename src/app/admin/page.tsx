@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Droplet, Download, Trash2, SlidersHorizontal, Search, ArrowLeft, PlusCircle, LogOut, Lock, Settings, AlertCircle, Loader2, Calendar as CalendarIcon, Pencil, FilterX, AlertTriangle, RotateCcw, MapPin, ChevronLeft, ChevronRight, FileText, Printer } from "lucide-react";
+import { Droplet, Download, Trash2, SlidersHorizontal, Search, ArrowLeft, PlusCircle, LogOut, Lock, Settings, AlertCircle, Loader2, Calendar as CalendarIcon, Pencil, FilterX, AlertTriangle, RotateCcw, MapPin, ChevronLeft, ChevronRight, FileText, Printer, RefreshCw, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useAuth, useMemoFirebase, useUser, useDoc } from "@/firebase";
-import { collection, doc, updateDoc, getDocs, writeBatch, collectionGroup, serverTimestamp, deleteDoc, increment } from "firebase/firestore";
+import { collection, doc, updateDoc, getDocs, writeBatch, collectionGroup, serverTimestamp, deleteDoc, increment, addDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { cn } from "@/lib/utils";
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [editingLoc, setEditingLoc] = useState<LocationOption | null>(null);
   const [newName, setNewName] = useState("");
@@ -131,6 +133,91 @@ export default function AdminPage() {
     } catch (e) {
       console.error(e);
       toast({ title: "Gagal Menambah Data", variant: "destructive" });
+    }
+  };
+
+  const handleGenerateSamples = async () => {
+    if (!user || !locations || locations.length === 0) {
+      toast({ title: "Gagal", description: "Pastikan lokasi (seed) sudah ada.", variant: "destructive" });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const samples = [
+        { fullName: "Budi Santoso", email: "budi@email.com", category: "Pegawai KCI", nipp: "12345", unitKerja: "Operasi", bloodType: "A" },
+        { fullName: "Siti Aminah", email: "siti@email.com", category: "Umum", nik: "320123456789", bloodType: "B" },
+        { fullName: "Agus Wijaya", email: "agus@email.com", category: "Pegawai KCI", nipp: "67890", unitKerja: "Sarana", bloodType: "O" },
+        { fullName: "Dewi Lestari", email: "dewi@email.com", category: "Umum", nik: "320987654321", bloodType: "AB" },
+        { fullName: "Rudi Hermawan", email: "rudi@email.com", category: "Pegawai KCI", nipp: "11223", unitKerja: "IT", bloodType: "A" }
+      ];
+
+      for (const sample of samples) {
+        const randomLoc = locations[Math.floor(Math.random() * locations.length)];
+        const registrationId = doc(collection(db, "temp")).id;
+        const regRef = doc(db, "users", user.uid, "registrations", registrationId);
+        
+        const regData = {
+          ...sample,
+          id: registrationId,
+          eventSlotId: randomLoc.id,
+          locationName: randomLoc.locationName,
+          locationDate: randomLoc.eventDate,
+          registrationDate: serverTimestamp(),
+          githubUserId: user.uid,
+        };
+
+        await updateDoc(doc(db, "eventSlots", randomLoc.id), { 
+          currentRegistrations: increment(1),
+          updatedAt: serverTimestamp()
+        });
+        
+        const batch = writeBatch(db);
+        batch.set(regRef, regData);
+        await batch.commit();
+      }
+      toast({ title: "Berhasil", description: "5 Pendaftar contoh telah dibuat." });
+    } catch (error: any) {
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSyncQuotas = async () => {
+    if (!registrations || !locations) return;
+    setIsSyncing(true);
+    try {
+      const batch = writeBatch(db);
+      const actualCounts: Record<string, number> = {};
+
+      // Count actual registration documents from the collection group
+      registrations.forEach((reg) => {
+        if (reg.eventSlotId) {
+          actualCounts[reg.eventSlotId] = (actualCounts[reg.eventSlotId] || 0) + 1;
+        }
+      });
+
+      // Update currentRegistrations for each location
+      locations.forEach((loc) => {
+        const actualCount = actualCounts[loc.id] || 0;
+        if (loc.currentRegistrations !== actualCount) {
+          const locRef = doc(db, "eventSlots", loc.id);
+          batch.update(locRef, { 
+            currentRegistrations: actualCount,
+            updatedAt: serverTimestamp()
+          });
+        }
+      });
+
+      await batch.commit();
+      toast({ 
+        title: "Sinkronisasi Berhasil", 
+        description: "Angka kuota telah diperbarui sesuai jumlah pendaftar asli di database." 
+      });
+    } catch (error: any) {
+      toast({ title: "Gagal Sinkronisasi", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -243,7 +330,7 @@ export default function AdminPage() {
     setEditRegName(reg.fullName);
     setEditRegEmail(reg.email);
     setEditRegUnit(reg.unitKerja || "");
-    const idNum = (reg.category === "Pegawai KCI" || reg.category === "Internal") ? (reg.nipp || reg.nik || "") : (reg.nik || r.nipp || "");
+    const idNum = (reg.category === "Pegawai KCI" || reg.category === "Internal") ? (reg.nipp || reg.nik || "") : (reg.nik || reg.nipp || "");
     setEditRegIdNumber(idNum);
     setEditRegSlotId(reg.eventSlotId);
   };
@@ -517,6 +604,14 @@ export default function AdminPage() {
             <PlusCircle className="h-4 w-4" /> Seed Lokasi
           </Button>
 
+          <Button 
+            onClick={handleGenerateSamples} 
+            disabled={isGenerating}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-12 rounded-xl px-5 font-bold shadow-sm"
+          >
+            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Sample Pendaftar
+          </Button>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="bg-[#FDF8F8] border-[#F5E6E6] text-[#C05656] hover:bg-[#F5E6E6] gap-2 h-12 rounded-xl px-5 font-bold shadow-sm">
@@ -526,7 +621,7 @@ export default function AdminPage() {
             <AlertDialogContent className="rounded-3xl border-none">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-2xl font-headline font-bold text-[#2D241E]">Hapus Semua Data?</AlertDialogTitle>
-                <AlertDialogDescription className="text-base text-[#80766E]">Tindakan ini akan menghapus semua pendaftar.</AlertDialogDescription>
+                <AlertDialogDescription className="text-base text-[#80766E]">Tindakan ini akan menghapus semua pendaftar secara permanen. Tindakan ini tidak dapat dibatalkan.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel className="h-12 rounded-xl font-bold">Batal</AlertDialogCancel>
@@ -584,6 +679,16 @@ export default function AdminPage() {
             </div>
             
             <div className="flex items-center gap-3">
+              <Button 
+                onClick={handleSyncQuotas} 
+                disabled={isSyncing}
+                variant="outline" 
+                className="h-14 px-5 rounded-2xl border-none bg-[#F8F7F4] text-primary font-bold gap-2 hover:bg-primary/5 transition-colors"
+              >
+                {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+                Sync Kuota
+              </Button>
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("h-14 px-5 rounded-2xl border-none bg-[#F8F7F4] text-[#80766E] font-bold gap-2", (startDate || endDate) && "text-primary bg-primary/5")}>
@@ -608,13 +713,12 @@ export default function AdminPage() {
                 </PopoverContent>
               </Popover>
 
-              {/* Badges Container */}
               <div className="flex items-center gap-2">
                 <div className="bg-emerald-50 border border-emerald-100 rounded-full px-6 py-2.5 shadow-sm h-14 flex items-center">
                   <span className="font-bold text-base text-emerald-700 whitespace-nowrap">Seed Aktif: {totalActiveSeedRegistrations} Orang</span>
                 </div>
                 <div className="bg-white border border-[#E5E7EB] rounded-full px-6 py-2.5 shadow-sm h-14 flex items-center">
-                  <span className="font-bold text-base text-[#2D241E] whitespace-nowrap">Total: {filteredData.length} Orang</span>
+                  <span className="font-bold text-base text-[#2D241E] whitespace-nowrap">Total Pendaftar: {registrations?.length || 0} Orang</span>
                 </div>
               </div>
             </div>
@@ -738,7 +842,7 @@ export default function AdminPage() {
           {totalPages > 1 && (
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-[#F5F3EF]">
               <div className="text-sm text-[#80766E] font-medium order-2 md:order-1">
-                Menampilkan <span className="font-bold text-[#2D241E]">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-bold text-[#2D241E]">{Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)}</span> dari <span className="font-bold text-[#2D241E]">{filteredData.length}</span> pendaftar
+                Menampilkan <span className="font-bold text-[#2D241E]">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-bold text-[#2D241E]">{Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)}</span> dari <span className="font-bold text-[#2D241E]">{filteredData.length}</span> pendaftar yang difilter
               </div>
               <div className="flex items-center gap-2 order-1 md:order-2">
                 <Button
