@@ -641,13 +641,13 @@ export default function AdminPage() {
                 <Trash2 className="h-4 w-4" /> Reset Data
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-3xl border-none">
+            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-2xl font-headline font-bold text-[#2D241E]">Hapus Semua Data?</AlertDialogTitle>
                 <AlertDialogDescription className="text-base text-[#80766E]">Tindakan ini akan menghapus semua pendaftar secara permanen. Tindakan ini tidak dapat dibatalkan.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="h-12 rounded-xl font-bold Batal">Batal</AlertDialogCancel>
+                <AlertDialogCancel className="h-12 rounded-xl font-bold">Batal</AlertDialogCancel>
                 <AlertDialogAction onClick={handleReset} className="h-12 rounded-xl bg-destructive text-white font-bold">Ya, Hapus Semua</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -864,7 +864,7 @@ export default function AdminPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle className="text-2xl font-headline font-bold text-[#2D241E] flex items-center gap-2">
                                     <AlertTriangle className="h-6 w-6 text-red-500" /> Hapus Pendaftar?
-                                  </AlertTriangle>
+                                  </AlertDialogTitle>
                                   <AlertDialogDescription className="text-[#80766E] text-base">
                                     Apakah Anda yakin ingin menghapus data <strong>{reg.fullName}</strong>? 
                                     Tindakan ini akan mengembalikan 1 slot kuota untuk lokasi <strong>{reg.locationName}</strong> jika pendaftaran dilakukan setelah proses seed terakhir.
