@@ -28,6 +28,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 const ITEMS_PER_PAGE = 50;
+const BLOOD_TYPES = ["A", "B", "AB", "O", "Tidak pernah diperiksa"];
 
 export default function AdminPage() {
   const db = useFirestore();
@@ -58,6 +59,9 @@ export default function AdminPage() {
   const [editRegUnit, setEditRegUnit] = useState("");
   const [editRegIdNumber, setEditRegIdNumber] = useState("");
   const [editRegSlotId, setEditRegSlotId] = useState("");
+  const [editRegBloodType, setEditRegBloodType] = useState("");
+  const [editRegCategory, setEditRegCategory] = useState("");
+  const [editRegDate, setEditRegDate] = useState("");
 
   // Statement View State
   const [viewingStatement, setViewingStatement] = useState<{ reg: Registration; index: number } | null>(null);
@@ -194,14 +198,12 @@ export default function AdminPage() {
       const batch = writeBatch(db);
       const actualCounts: Record<string, number> = {};
 
-      // Count actual registration documents from the collection group
       registrations.forEach((reg) => {
         if (reg.eventSlotId) {
           actualCounts[reg.eventSlotId] = (actualCounts[reg.eventSlotId] || 0) + 1;
         }
       });
 
-      // Update currentRegistrations for each location
       locations.forEach((loc) => {
         const actualCount = actualCounts[loc.id] || 0;
         if (loc.currentRegistrations !== actualCount) {
@@ -357,6 +359,17 @@ export default function AdminPage() {
     const idNum = (reg.category === "Pegawai KCI" || reg.category === "Internal") ? (reg.nipp || reg.nik || "") : (reg.nik || reg.nipp || "");
     setEditRegIdNumber(idNum);
     setEditRegSlotId(reg.eventSlotId);
+    setEditRegBloodType(reg.bloodType || "");
+    setEditRegCategory(reg.category || "Pegawai KCI");
+    
+    if (reg.registrationDate?.seconds) {
+      const d = new Date(reg.registrationDate.seconds * 1000);
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+      setEditRegDate(localISOTime);
+    } else {
+      setEditRegDate("");
+    }
   };
 
   const handleSaveReg = async () => {
@@ -368,14 +381,23 @@ export default function AdminPage() {
       const updateData: any = {
         fullName: editRegName,
         email: editRegEmail,
+        bloodType: editRegBloodType,
+        category: editRegCategory,
         updatedAt: serverTimestamp()
       };
 
-      if (editingReg.category === "Pegawai KCI" || editingReg.category === "Internal") {
+      if (editRegDate) {
+        updateData.registrationDate = new Date(editRegDate);
+      }
+
+      if (editRegCategory === "Pegawai KCI" || editRegCategory === "Internal") {
         updateData.nipp = editRegIdNumber;
         updateData.unitKerja = editRegUnit;
+        updateData.nik = "";
       } else {
         updateData.nik = editRegIdNumber;
+        updateData.nipp = "";
+        updateData.unitKerja = "";
       }
 
       if (editRegSlotId !== editingReg.eventSlotId) {
@@ -430,8 +452,6 @@ export default function AdminPage() {
     }
 
     const filename = `${reg.fullName} (${formattedDate}).pdf`;
-    
-    // Dynamic import to avoid SSR issues
     const html2pdf = (await import('html2pdf.js')).default;
     
     const element = statementRef.current;
@@ -444,18 +464,15 @@ export default function AdminPage() {
     };
     
     toast({ title: "Sedang Menyiapkan PDF", description: "Mohon tunggu sebentar..." });
-    
     html2pdf().set(opt).from(element).save();
   };
 
-  // Logic to calculate monthly index (resets to 1 each month)
   const getMonthlyIndex = (reg: Registration) => {
     if (!reg.locationDate || !registrations) return 0;
     try {
       const eventDate = parseISO(reg.locationDate);
       const monthYearKey = format(eventDate, "yyyy-MM");
       
-      // Filter all registrations that share the same event month/year
       const monthlyItems = registrations
         .filter(r => {
           if (!r.locationDate) return false;
@@ -464,7 +481,6 @@ export default function AdminPage() {
             return format(rDate, "yyyy-MM") === monthYearKey;
           } catch { return false; }
         })
-        // Sort chronologically by registration date
         .sort((a, b) => (a.registrationDate?.seconds || 0) - (b.registrationDate?.seconds || 0));
       
       const index = monthlyItems.findIndex(item => item.id === reg.id);
@@ -513,7 +529,6 @@ export default function AdminPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Calculate total registrations on all active seed locations
   const totalActiveSeedRegistrations = locations?.reduce((sum, loc) => sum + (loc.currentRegistrations || 0), 0) || 0;
 
   useEffect(() => {
@@ -1057,7 +1072,7 @@ export default function AdminPage() {
 
       {/* Edit Registration Dialog */}
       <Dialog open={!!editingReg} onOpenChange={(open) => !open && setEditingReg(null)}>
-        <DialogContent className="sm:max-w-md rounded-[32px] border-none shadow-2xl">
+        <DialogContent className="sm:max-w-md rounded-[32px] border-none shadow-2xl overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-headline font-bold">Edit Data Pendaftar</DialogTitle>
           </DialogHeader>
@@ -1070,8 +1085,36 @@ export default function AdminPage() {
               <Label className="text-sm font-bold">Email</Label>
               <Input type="email" value={editRegEmail} onChange={(e) => setEditRegEmail(e.target.value)} className="h-12 bg-[#F8F7F4] border-none rounded-2xl" />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">Kategori</Label>
+                <Select value={editRegCategory} onValueChange={setEditRegCategory}>
+                  <SelectTrigger className="h-12 bg-[#F8F7F4] border-none rounded-xl">
+                    <SelectValue placeholder="Pilih Kategori" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-none shadow-xl">
+                    <SelectItem value="Pegawai KCI" className="rounded-lg">Pegawai KCI</SelectItem>
+                    <SelectItem value="Umum" className="rounded-lg">Umum</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">Golongan Darah</Label>
+                <Select value={editRegBloodType} onValueChange={setEditRegBloodType}>
+                  <SelectTrigger className="h-12 bg-[#F8F7F4] border-none rounded-xl">
+                    <SelectValue placeholder="Gol. Darah" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-none shadow-xl">
+                    {BLOOD_TYPES.map((type) => (
+                      <SelectItem key={type} value={type} className="rounded-lg">{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             
-            {(editingReg?.category === "Pegawai KCI" || editingReg?.category === "Internal") && (
+            {(editRegCategory === "Pegawai KCI" || editRegCategory === "Internal") && (
               <>
                 <div className="space-y-2">
                   <Label className="text-sm font-bold">NIPP/NIK</Label>
@@ -1083,6 +1126,23 @@ export default function AdminPage() {
                 </div>
               </>
             )}
+
+            {editRegCategory === "Umum" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">NIK</Label>
+                <Input value={editRegIdNumber} onChange={(e) => setEditRegIdNumber(e.target.value)} className="h-12 bg-[#F8F7F4] border-none rounded-2xl" />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label className="text-sm font-bold">Waktu Daftar</Label>
+              <Input 
+                type="datetime-local" 
+                value={editRegDate} 
+                onChange={(e) => setEditRegDate(e.target.value)} 
+                className="h-12 bg-[#F8F7F4] border-none rounded-2xl" 
+              />
+            </div>
             
             {(() => {
               if (!editingReg) return null;
