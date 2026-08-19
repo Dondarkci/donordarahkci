@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Droplet, Download, Trash2, SlidersHorizontal, Search, ArrowLeft, PlusCircle, LogOut, Lock, Settings, AlertCircle, Loader2, Calendar as CalendarIcon, Pencil, FilterX, AlertTriangle, RotateCcw, MapPin, ChevronLeft, ChevronRight, FileText, Printer, RefreshCw, Users } from "lucide-react";
+import { Droplet, Download, Trash2, SlidersHorizontal, Search, ArrowLeft, PlusCircle, LogOut, Lock, Settings, AlertCircle, Loader2, Calendar as CalendarIcon, Pencil, FilterX, AlertTriangle, RotateCcw, MapPin, ChevronLeft, ChevronRight, FileText, Printer, RefreshCw, Users, ClipboardCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,8 @@ import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-f
 import { id as localeId } from "date-fns/locale";
 import RegistrationStatement from "@/components/RegistrationStatement";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -164,6 +166,7 @@ export default function AdminPage() {
           locationDate: randomLoc.eventDate,
           registrationDate: serverTimestamp(),
           githubUserId: user.uid,
+          status: "Tidak Hadir"
         };
 
         await updateDoc(doc(db, "eventSlots", randomLoc.id), { 
@@ -269,13 +272,32 @@ export default function AdminPage() {
     }
   };
 
+  const handleUpdateStatus = (reg: Registration, newStatus: string) => {
+    const regRef = doc(db, "users", reg.githubUserId, "registrations", reg.id);
+    updateDoc(regRef, { 
+      status: newStatus, 
+      updatedAt: serverTimestamp() 
+    }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: regRef.path,
+        operation: 'update',
+        requestResourceData: { status: newStatus },
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({ 
+      title: "Status Diperbarui", 
+      description: `Status ${reg.fullName} kini: ${newStatus}` 
+    });
+  };
+
   const downloadExcel = () => {
     if (!registrations || registrations.length === 0) {
       toast({ title: "Gagal Download", description: "Belum ada data pendaftar.", variant: "destructive" });
       return;
     }
 
-    const headers = ["Nama Lengkap", "NIK/NIPP", "Unit Kerja", "Email", "Gol. Darah", "Kategori", "Lokasi", "Tanggal", "Waktu Daftar"];
+    const headers = ["Nama Lengkap", "NIK/NIPP", "Unit Kerja", "Email", "Gol. Darah", "Kategori", "Lokasi", "Tanggal", "Status", "Waktu Daftar"];
     const rows = filteredData.map(r => [
       r.fullName,
       r.category === "Pegawai KCI" || r.category === "Internal" ? `'${r.nipp || r.nik || ""}` : `'${r.nik || r.nipp || ""}`,
@@ -285,6 +307,7 @@ export default function AdminPage() {
       r.category === "Internal" ? "Pegawai KCI" : r.category,
       r.locationName || "",
       r.locationDate || "",
+      r.status || "Tidak Hadir",
       r.registrationDate ? new Date(r.registrationDate.seconds * 1000).toLocaleString('id-ID') : ""
     ]);
 
@@ -624,7 +647,7 @@ export default function AdminPage() {
                 <AlertDialogDescription className="text-base text-[#80766E]">Tindakan ini akan menghapus semua pendaftar secara permanen. Tindakan ini tidak dapat dibatalkan.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="h-12 rounded-xl font-bold">Batal</AlertDialogCancel>
+                <AlertDialogCancel className="h-12 rounded-xl font-bold Batal">Batal</AlertDialogCancel>
                 <AlertDialogAction onClick={handleReset} className="h-12 rounded-xl bg-destructive text-white font-bold">Ya, Hapus Semua</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -735,6 +758,7 @@ export default function AdminPage() {
                   <TableHead className="text-center">Email</TableHead>
                   <TableHead className="text-center">Kategori</TableHead>
                   <TableHead className="text-center">Lokasi</TableHead>
+                  <TableHead className="text-center">Keterangan</TableHead>
                   <TableHead className="text-center">Waktu Daftar</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                   <TableHead className="text-right">Form</TableHead>
@@ -742,9 +766,9 @@ export default function AdminPage() {
               </TableHeader>
               <TableBody>
                 {isRegsLoading ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-20 italic">Memuat data pendaftar...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-20 italic">Memuat data pendaftar...</TableCell></TableRow>
                 ) : paginatedData.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-20 italic">Belum ada data pendaftar.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-20 italic">Belum ada data pendaftar.</TableCell></TableRow>
                 ) : (
                   paginatedData.map((reg) => {
                     const monthlyIndex = getMonthlyIndex(reg);
@@ -770,6 +794,26 @@ export default function AdminPage() {
                         <TableCell className="text-center">
                           <div className="font-bold">{reg.locationName}</div>
                           <div className="text-[10px] text-[#80766E]">{reg.locationDate}</div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Select 
+                            value={reg.status || "Tidak Hadir"} 
+                            onValueChange={(val) => handleUpdateStatus(reg, val)}
+                          >
+                            <SelectTrigger className={cn(
+                              "h-9 w-[130px] rounded-xl border-none font-bold text-xs mx-auto",
+                              reg.status === "Berhasil" ? "bg-emerald-50 text-emerald-700" :
+                              reg.status === "Tidak Berhasil" ? "bg-red-50 text-red-700" :
+                              "bg-orange-50 text-orange-700"
+                            )}>
+                              <SelectValue placeholder="Pilih Status" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-none shadow-xl">
+                              <SelectItem value="Berhasil" className="text-emerald-700 font-bold focus:bg-emerald-50">Berhasil</SelectItem>
+                              <SelectItem value="Tidak Berhasil" className="text-red-700 font-bold focus:bg-red-50">Tidak Berhasil</SelectItem>
+                              <SelectItem value="Tidak Hadir" className="text-orange-700 font-bold focus:bg-orange-50">Tidak Hadir</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell className="text-[#A09891] text-sm text-center">
                           {reg.registrationDate ? new Date(reg.registrationDate.seconds * 1000).toLocaleString('id-ID') : "-"}

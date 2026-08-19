@@ -23,6 +23,7 @@ export type ParticipantRegistration = {
   githubUserId: string;
   locationName?: string;
   locationDate?: string;
+  status?: "Tidak Hadir" | "Berhasil" | "Tidak Berhasil";
 };
 
 // Alias for backward compatibility if needed in some components

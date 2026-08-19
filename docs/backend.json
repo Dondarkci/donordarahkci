@@ -31,7 +31,12 @@
         "registrationDate": { "type": "object" },
         "githubUserId": { "type": "string" },
         "locationName": { "type": "string" },
-        "locationDate": { "type": "string" }
+        "locationDate": { "type": "string" },
+        "status": { 
+          "type": "string", 
+          "enum": ["Tidak Hadir", "Berhasil", "Tidak Berhasil"],
+          "description": "Status kehadiran dan keberhasilan donor darah."
+        }
       },
       "required": ["id", "fullName", "email", "category", "bloodType", "eventSlotId", "githubUserId"]
     },
