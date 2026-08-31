@@ -730,6 +730,7 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="text-center w-12">No</TableHead>
                   <TableHead className="text-center">Nama Lengkap</TableHead>
                   <TableHead className="text-center">ID (NIK/NIPP)</TableHead>
                   <TableHead className="text-center">Gol. Darah</TableHead>
@@ -745,15 +746,17 @@ export default function AdminPage() {
               </TableHeader>
               <TableBody>
                 {isRegsLoading ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-20 italic">Memuat data pendaftar...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-20 italic">Memuat data pendaftar...</TableCell></TableRow>
                 ) : paginatedData.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-20 italic">Belum ada data pendaftar.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-20 italic">Belum ada data pendaftar.</TableCell></TableRow>
                 ) : (
-                  paginatedData.map((reg) => {
+                  paginatedData.map((reg, index) => {
                     const monthlyIndex = getMonthlyIndex(reg);
+                    const displayNo = (currentPage - 1) * ITEMS_PER_PAGE + index + 1;
                     
                     return (
                       <TableRow key={reg.id}>
+                        <TableCell className="text-center font-medium">{displayNo}</TableCell>
                         <TableCell className="font-bold text-center capitalize">{reg.fullName}</TableCell>
                         <TableCell className="font-bold text-center">
                           {(reg.nipp || reg.nik || "-")}
@@ -776,14 +779,15 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <span className={cn(
-                              "px-2 py-1 rounded-full text-[10px] font-bold",
-                              reg.status === "Berhasil" ? "bg-emerald-100 text-emerald-700" :
-                              reg.status === "Tidak Berhasil" ? "bg-red-100 text-red-700" :
-                              "bg-orange-100 text-orange-700"
-                            )}>
-                              {reg.status || "Tidak Hadir"}
-                            </span>
+                            {reg.status && reg.status !== "Tidak Hadir" && (
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-[10px] font-bold",
+                                reg.status === "Berhasil" ? "bg-emerald-100 text-emerald-700" :
+                                "bg-red-100 text-red-700"
+                              )}>
+                                {reg.status}
+                              </span>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-muted">
