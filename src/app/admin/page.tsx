@@ -345,7 +345,7 @@ export default function AdminPage() {
         updateData.unitKerja = editRegUnit;
         updateData.nik = "";
       } else {
-        updateData.nik = ""; // NIK removed for Umum
+        updateData.nik = "";
         updateData.nipp = "";
         updateData.unitKerja = "";
       }
@@ -779,11 +779,12 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
-                            {reg.status && reg.status !== "Tidak Hadir" && (
+                            {reg.status && (
                               <span className={cn(
                                 "px-2 py-1 rounded-full text-[10px] font-bold",
                                 reg.status === "Berhasil" ? "bg-emerald-100 text-emerald-700" :
-                                "bg-red-100 text-red-700"
+                                reg.status === "Tidak Berhasil" ? "bg-red-100 text-red-700" :
+                                "bg-orange-100 text-orange-700"
                               )}>
                                 {reg.status}
                               </span>
